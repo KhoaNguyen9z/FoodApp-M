@@ -1,0 +1,169 @@
+package com.example.foodapp.ui.available
+
+import android.content.Intent
+import android.os.Bundle
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
+import android.widget.Toast
+import androidx.fragment.app.Fragment
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
+import com.example.foodapp.data.api.RetrofitClient
+import com.example.foodapp.data.repository.ShipperRepository
+import com.example.foodapp.databinding.FragmentAvailableOrdersBinding
+import com.example.foodapp.ui.adapter.OrderAdapter
+import com.example.foodapp.ui.detail.OrderDetailActivity
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
+
+class AvailableOrdersFragment : Fragment() {
+    
+    private var _binding: FragmentAvailableOrdersBinding? = null
+    private val binding get() = _binding!!
+    
+    private lateinit var viewModel: AvailableOrdersViewModel
+    private lateinit var orderAdapter: OrderAdapter
+    
+    override fun onCreateView(
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View {
+        _binding = FragmentAvailableOrdersBinding.inflate(inflater, container, false)
+        return binding.root
+    }
+    
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+        
+        val apiService = RetrofitClient.getApiService(requireContext())
+        val repository = ShipperRepository(apiService)
+        viewModel = AvailableOrdersViewModel(repository)
+        
+        setupRecyclerView()
+        setupObservers()
+        setupSwipeRefresh()
+        
+        viewModel.loadAvailableOrders()
+    }
+    
+    private fun setupRecyclerView() {
+        orderAdapter = OrderAdapter(
+            onOrderClick = { order ->
+                val intent = Intent(requireContext(), OrderDetailActivity::class.java).apply {
+                    putExtra("ORDER_DATA", order)
+                    putExtra("FROM_AVAILABLE", true)
+                }
+                startActivity(intent)
+            },
+            onAcceptOrderClick = { order ->
+                showAcceptOrderDialog(order)
+            },
+            onViewMapClick = { order ->
+                openMapWithAddress(order.dia_chi_giao)
+            }
+        )
+        binding.ordersRecyclerView.adapter = orderAdapter
+    }
+    
+    private fun setupObservers() {
+        viewModel.orders.observe(viewLifecycleOwner) { orders ->
+            orderAdapter.submitList(orders)
+            binding.emptyTextView.visibility = if (orders.isEmpty()) View.VISIBLE else View.GONE
+        }
+        
+        viewModel.isLoading.observe(viewLifecycleOwner) { isLoading ->
+            binding.progressBar.visibility = if (isLoading) View.VISIBLE else View.GONE
+        }
+        
+        viewModel.error.observe(viewLifecycleOwner) { error ->
+            error?.let {
+                Toast.makeText(requireContext(), it, Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+    
+    private fun setupSwipeRefresh() {
+        binding.swipeRefreshLayout.setOnRefreshListener {
+            viewModel.loadAvailableOrders()
+            binding.swipeRefreshLayout.isRefreshing = false
+        }
+    }
+    
+    private fun showAcceptOrderDialog(order: com.example.foodapp.data.models.Order) {
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle("Nhận đơn hàng")
+            .setMessage("Bạn có chắc chắn muốn nhận đơn hàng ${order.ma_don_hang}?")
+            .setPositiveButton("Nhận đơn") { _, _ ->
+                acceptOrder(order)
+            }
+            .setNegativeButton("Hủy", null)
+            .show()
+    }
+    
+    private fun acceptOrder(order: com.example.foodapp.data.models.Order) {
+        val apiService = RetrofitClient.getApiService(requireContext())
+        val repository = ShipperRepository(apiService)
+        
+        // Use a simple coroutine scope for this operation
+        lifecycleScope.launch {
+            try {
+                val result = repository.acceptOrder(order.id)
+                result.onSuccess {
+                    Toast.makeText(requireContext(), "Nhận đơn hàng thành công!", Toast.LENGTH_SHORT).show()
+                    viewModel.loadAvailableOrders() // Refresh the list
+                }
+                result.onFailure { exception ->
+                    val errorMsg = when {
+                        exception.message?.contains("500") == true -> 
+                            "Lỗi server: Có vấn đề với cơ sở dữ liệu. Vui lòng liên hệ admin."
+                        exception.message?.contains("404") == true -> 
+                            "Đơn hàng không tồn tại hoặc đã được nhận bởi shipper khác"
+                        exception.message?.contains("400") == true -> 
+                            "Đơn hàng này không thể nhận (trạng thái không phù hợp)"
+                        else -> exception.message ?: "Có lỗi xảy ra"
+                    }
+                    Toast.makeText(requireContext(), errorMsg, Toast.LENGTH_LONG).show()
+                }
+            } catch (e: Exception) {
+                Toast.makeText(requireContext(), "Có lỗi xảy ra: ${e.message}", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+    
+    private fun openMapWithAddress(address: String) {
+        try {
+            // Try to open Google Maps first
+            val gmmIntentUri = android.net.Uri.parse("geo:0,0?q=${android.net.Uri.encode(address)}")
+            val mapIntent = Intent(Intent.ACTION_VIEW, gmmIntentUri)
+            mapIntent.setPackage("com.google.android.apps.maps")
+            
+            if (mapIntent.resolveActivity(requireContext().packageManager) != null) {
+                startActivity(mapIntent)
+            } else {
+                // Fallback to any app that can handle the geo intent
+                val generalMapIntent = Intent(Intent.ACTION_VIEW, gmmIntentUri)
+                if (generalMapIntent.resolveActivity(requireContext().packageManager) != null) {
+                    startActivity(generalMapIntent)
+                } else {
+                    // Last resort: open address in web browser
+                    val webIntent = Intent(Intent.ACTION_VIEW, 
+                        android.net.Uri.parse("https://www.google.com/maps/search/${android.net.Uri.encode(address)}"))
+                    startActivity(webIntent)
+                }
+            }
+        } catch (e: Exception) {
+            Toast.makeText(requireContext(), "Không thể mở bản đồ: ${e.message}", Toast.LENGTH_SHORT).show()
+        }
+    }
+    
+    override fun onResume() {
+        super.onResume()
+        viewModel.loadAvailableOrders()
+    }
+    
+    override fun onDestroyView() {
+        super.onDestroyView()
+        _binding = null
+    }
+}
