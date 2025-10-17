@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Shipper App</string>
+    <string name="app_name">FoodKing Shipper</string>
     
     <!-- Material DatePicker Strings (Vietnamese) -->
     <string name="mtrl_picker_text_input_date_hint">Chọn ngày</string>

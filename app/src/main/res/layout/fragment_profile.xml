@@ -22,8 +22,9 @@
             <ImageView
                 android:layout_width="80dp"
                 android:layout_height="80dp"
-                android:src="@mipmap/ic_launcher"
-                android:layout_marginBottom="16dp"/>
+                android:src="@drawable/foodking"
+                android:layout_marginBottom="16dp"
+                android:scaleType="centerInside"/>
 
             <TextView
                 android:id="@+id/nameTextView"
@@ -189,7 +190,7 @@
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Shipper App"
+        android:text="FoodKing Shipper"
         android:textSize="14sp"
         android:textStyle="bold"
         android:layout_marginTop="24dp"

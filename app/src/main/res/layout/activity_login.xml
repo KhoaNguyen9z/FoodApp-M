@@ -13,18 +13,28 @@
         android:padding="24dp"
         android:paddingTop="48dp">
 
-        <ImageView
+        <com.google.android.material.card.MaterialCardView
             android:layout_width="120dp"
             android:layout_height="120dp"
-            android:src="@mipmap/ic_launcher"
             android:layout_gravity="center_horizontal"
-            android:layout_marginBottom="32dp"/>
+            android:layout_marginBottom="32dp"
+            app:cardCornerRadius="60dp"
+            app:cardElevation="4dp"
+            app:strokeWidth="0dp">
+
+            <ImageView
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:src="@drawable/foodking"
+                android:scaleType="centerCrop"/>
+
+        </com.google.android.material.card.MaterialCardView>
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="center_horizontal"
-            android:text="Shipper App"
+            android:text="FoodKing"
             android:textSize="28sp"
             android:textStyle="bold"
             android:textColor="@color/black"
@@ -34,7 +44,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="center_horizontal"
-            android:text="Đăng nhập để tiếp tục"
+            android:text="Đăng nhập để bắt đầu giao hàng"
             android:textSize="16sp"
             android:textColor="@android:color/darker_gray"
             android:layout_marginBottom="32dp"/>
