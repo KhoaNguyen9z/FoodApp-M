@@ -7,6 +7,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.lifecycleScope
 import com.example.foodapp.data.api.RetrofitClient
 import com.example.foodapp.data.repository.ShipperRepository
 import com.example.foodapp.databinding.FragmentMyOrdersBinding
@@ -16,6 +17,7 @@ import com.example.foodapp.utils.showError
 import com.example.foodapp.utils.hideError
 import com.example.foodapp.utils.isNetworkAvailable
 import com.google.android.material.tabs.TabLayout
+import kotlinx.coroutines.launch
 
 class MyOrdersFragment : Fragment() {
     
@@ -23,6 +25,7 @@ class MyOrdersFragment : Fragment() {
     private val binding get() = _binding!!
     
     private lateinit var viewModel: MyOrdersViewModel
+    private lateinit var repository: ShipperRepository
     private lateinit var orderAdapter: OrderAdapter
     
     private var currentStatus: String? = "Đang giao"
@@ -42,7 +45,7 @@ class MyOrdersFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         
         val apiService = RetrofitClient.getApiService(requireContext())
-        val repository = ShipperRepository(apiService)
+        repository = ShipperRepository(apiService)
         viewModel = MyOrdersViewModel(repository)
         
         setupRecyclerView()
@@ -344,7 +347,67 @@ class MyOrdersFragment : Fragment() {
             return
         }
         
-        viewModel.loadMyOrders(currentStatus, startDate, endDate)
+        // Xử lý riêng cho tab "Tất cả" (fallback nếu backend không support status=null)
+        if (currentStatus == null) {
+            loadAllOrdersWithFallback()
+        } else {
+            viewModel.loadMyOrders(currentStatus, startDate, endDate)
+        }
+    }
+    
+    private fun loadAllOrdersWithFallback() {
+        android.util.Log.d("MyOrdersFragment", "Loading all orders with fallback method")
+        
+        // Thử gọi API với status=null trước
+        viewModel.loadMyOrders(null, startDate, endDate)
+        
+        // Nếu không có kết quả sau 3 giây, dùng fallback
+        binding.root.postDelayed({
+            if (orderAdapter.itemCount == 0 && !viewModel.isLoading.value!!) {
+                android.util.Log.d("MyOrdersFragment", "No data from status=null, using fallback")
+                loadAllOrdersFallback()
+            }
+        }, 3000)
+    }
+    
+    private fun loadAllOrdersFallback() {
+        // Load từng loại đơn riêng rồi merge (fallback method)
+        android.util.Log.d("MyOrdersFragment", "Using fallback: loading each status separately")
+        
+        lifecycleScope.launch {
+            try {
+                val allOrders = mutableListOf<com.example.foodapp.data.models.Order>()
+                
+                // Load từng status
+                val statuses = listOf("Đang giao", "Hoàn tất", "Quá hạn", "Bị hủy")
+                
+                statuses.forEach { status ->
+                    try {
+                        val result = repository.getMyOrders(status, startDate, endDate)
+                        result.onSuccess { orders ->
+                            allOrders.addAll(orders)
+                        }
+                    } catch (e: Exception) {
+                        android.util.Log.e("MyOrdersFragment", "Error loading $status: ${e.message}")
+                    }
+                }
+                
+                // Cập nhật UI
+                orderAdapter.submitList(allOrders)
+                binding.emptyTextView.visibility = if (allOrders.isEmpty()) View.VISIBLE else View.GONE
+                binding.ordersRecyclerView.visibility = if (allOrders.isNotEmpty()) View.VISIBLE else View.GONE
+                
+                android.util.Log.d("MyOrdersFragment", "Fallback loaded ${allOrders.size} orders total")
+                
+            } catch (e: Exception) {
+                android.util.Log.e("MyOrdersFragment", "Fallback failed: ${e.message}")
+                // Hiển thị error state
+                binding.root.showError(
+                    exception = e,
+                    onRetryClick = { loadOrdersWithFilter() }
+                )
+            }
+        }
     }
     
     private fun openMapWithAddress(address: String) {
