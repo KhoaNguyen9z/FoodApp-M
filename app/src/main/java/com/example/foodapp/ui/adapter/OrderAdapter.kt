@@ -11,12 +11,13 @@ import com.example.foodapp.databinding.ItemOrderBinding
 class OrderAdapter(
     private val onOrderClick: (Order) -> Unit,
     private val onAcceptOrderClick: ((Order) -> Unit)? = null,
-    private val onViewMapClick: ((Order) -> Unit)? = null
+    private val onViewMapClick: ((Order) -> Unit)? = null,
+    private val onCompleteOrderClick: ((Order) -> Unit)? = null
 ) : ListAdapter<Order, OrderAdapter.OrderViewHolder>(OrderDiffCallback()) {
     
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): OrderViewHolder {
         val binding = ItemOrderBinding.inflate(LayoutInflater.from(parent.context), parent, false)
-        return OrderViewHolder(binding, onOrderClick, onAcceptOrderClick, onViewMapClick)
+        return OrderViewHolder(binding, onOrderClick, onAcceptOrderClick, onViewMapClick, onCompleteOrderClick)
     }
     
     override fun onBindViewHolder(holder: OrderViewHolder, position: Int) {
@@ -27,7 +28,8 @@ class OrderAdapter(
         private val binding: ItemOrderBinding,
         private val onOrderClick: (Order) -> Unit,
         private val onAcceptOrderClick: ((Order) -> Unit)? = null,
-        private val onViewMapClick: ((Order) -> Unit)? = null
+        private val onViewMapClick: ((Order) -> Unit)? = null,
+        private val onCompleteOrderClick: ((Order) -> Unit)? = null
     ) : RecyclerView.ViewHolder(binding.root) {
         
         fun bind(order: Order) {
@@ -58,6 +60,16 @@ class OrderAdapter(
                 }
             } else {
                 binding.acceptOrderButton.visibility = android.view.View.GONE
+            }
+            
+            // Show/hide complete button based on order status and callback availability
+            if (onCompleteOrderClick != null && order.trang_thai == "Đang giao") {
+                binding.completeOrderButton.visibility = android.view.View.VISIBLE
+                binding.completeOrderButton.setOnClickListener {
+                    onCompleteOrderClick.invoke(order)
+                }
+            } else {
+                binding.completeOrderButton.visibility = android.view.View.GONE
             }
             
             // Map button is always visible if callback is provided and order has address

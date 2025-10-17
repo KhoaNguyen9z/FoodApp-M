@@ -190,6 +190,22 @@
                 app:icon="@android:drawable/ic_input_add"
                 app:iconGravity="textStart"/>
 
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/completeOrderButton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="8dp"
+                android:text="Hoàn tất"
+                android:textSize="13sp"
+                android:textColor="@color/white"
+                android:visibility="gone"
+                app:backgroundTint="#4CAF50"
+                app:cornerRadius="8dp"
+                app:icon="@android:drawable/ic_menu_save"
+                app:iconTint="@color/white"
+                app:iconGravity="textStart"/>
+
         </LinearLayout>
 
     </LinearLayout>

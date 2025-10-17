@@ -2,6 +2,8 @@ package com.example.foodapp.ui.available
 
 import android.content.Intent
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -15,6 +17,7 @@ import com.example.foodapp.databinding.FragmentAvailableOrdersBinding
 import com.example.foodapp.ui.adapter.OrderAdapter
 import com.example.foodapp.ui.detail.OrderDetailActivity
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.android.material.snackbar.Snackbar
 
 class AvailableOrdersFragment : Fragment() {
     
@@ -23,6 +26,20 @@ class AvailableOrdersFragment : Fragment() {
     
     private lateinit var viewModel: AvailableOrdersViewModel
     private lateinit var orderAdapter: OrderAdapter
+    
+    // Auto-refresh handler
+    private val autoRefreshHandler = Handler(Looper.getMainLooper())
+    private val autoRefreshInterval = 10000L // 10 giây
+    
+    private val autoRefreshRunnable = object : Runnable {
+        override fun run() {
+            if (isAdded && isVisible) {
+                // Auto-refresh: không hiển thị loading spinner
+                viewModel.loadAvailableOrders(showLoading = false)
+            }
+            autoRefreshHandler.postDelayed(this, autoRefreshInterval)
+        }
+    }
     
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -44,7 +61,38 @@ class AvailableOrdersFragment : Fragment() {
         setupObservers()
         setupSwipeRefresh()
         
+        // Load lần đầu
         viewModel.loadAvailableOrders()
+        
+        // Bắt đầu auto-refresh
+        startAutoRefresh()
+    }
+    
+    override fun onResume() {
+        super.onResume()
+        // Restart auto-refresh khi fragment visible
+        startAutoRefresh()
+    }
+    
+    override fun onPause() {
+        super.onPause()
+        // Stop auto-refresh khi fragment không visible
+        stopAutoRefresh()
+    }
+    
+    override fun onDestroyView() {
+        super.onDestroyView()
+        stopAutoRefresh()
+        _binding = null
+    }
+    
+    private fun startAutoRefresh() {
+        stopAutoRefresh() // Stop trước để tránh duplicate
+        autoRefreshHandler.postDelayed(autoRefreshRunnable, autoRefreshInterval)
+    }
+    
+    private fun stopAutoRefresh() {
+        autoRefreshHandler.removeCallbacks(autoRefreshRunnable)
     }
     
     private fun setupRecyclerView() {
@@ -85,7 +133,8 @@ class AvailableOrdersFragment : Fragment() {
     
     private fun setupSwipeRefresh() {
         binding.swipeRefreshLayout.setOnRefreshListener {
-            viewModel.loadAvailableOrders()
+            // Manual refresh: hiển thị loading spinner
+            viewModel.loadAvailableOrders(showLoading = true)
             binding.swipeRefreshLayout.isRefreshing = false
         }
     }
@@ -110,8 +159,31 @@ class AvailableOrdersFragment : Fragment() {
             try {
                 val result = repository.acceptOrder(order.id)
                 result.onSuccess {
-                    Toast.makeText(requireContext(), "Nhận đơn hàng thành công!", Toast.LENGTH_SHORT).show()
-                    viewModel.loadAvailableOrders() // Refresh the list
+                    // Hiển thị Snackbar trước
+                    if (isAdded && view != null) {
+                        Snackbar.make(
+                            binding.root,
+                            "✅ Nhận đơn hàng thành công!",
+                            Snackbar.LENGTH_SHORT
+                        ).setBackgroundTint(
+                            requireContext().getColor(android.R.color.holo_green_dark)
+                        ).setTextColor(
+                            requireContext().getColor(android.R.color.white)
+                        ).show()
+                    }
+                    
+                    // Delay rồi chuyển tab
+                    android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                        try {
+                            if (isAdded) {
+                                requireActivity().findViewById<com.google.android.material.bottomnavigation.BottomNavigationView>(
+                                    com.example.foodapp.R.id.bottomNavigationView
+                                )?.selectedItemId = com.example.foodapp.R.id.nav_my_orders
+                            }
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                        }
+                    }, 500)
                 }
                 result.onFailure { exception ->
                     val errorMsg = when {
@@ -157,13 +229,4 @@ class AvailableOrdersFragment : Fragment() {
         }
     }
     
-    override fun onResume() {
-        super.onResume()
-        viewModel.loadAvailableOrders()
-    }
-    
-    override fun onDestroyView() {
-        super.onDestroyView()
-        _binding = null
-    }
 }

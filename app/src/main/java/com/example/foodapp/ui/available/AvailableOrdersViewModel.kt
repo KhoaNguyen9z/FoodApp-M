@@ -19,9 +19,11 @@ class AvailableOrdersViewModel(private val repository: ShipperRepository) : View
     private val _error = MutableLiveData<String?>()
     val error: LiveData<String?> = _error
     
-    fun loadAvailableOrders() {
+    fun loadAvailableOrders(showLoading: Boolean = true) {
         viewModelScope.launch {
-            _isLoading.value = true
+            if (showLoading) {
+                _isLoading.value = true
+            }
             _error.value = null
             try {
                 val result = repository.getAvailableOrders()
@@ -32,7 +34,9 @@ class AvailableOrdersViewModel(private val repository: ShipperRepository) : View
                     _error.value = exception.message
                 }
             } finally {
-                _isLoading.value = false
+                if (showLoading) {
+                    _isLoading.value = false
+                }
             }
         }
     }

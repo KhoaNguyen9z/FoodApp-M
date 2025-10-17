@@ -60,6 +60,9 @@ class MyOrdersFragment : Fragment() {
             onAcceptOrderClick = null, // Không hiển thị nút nhận đơn trong tab "Đơn của tôi"
             onViewMapClick = { order ->
                 openMapWithAddress(order.dia_chi_giao)
+            },
+            onCompleteOrderClick = { order ->
+                showCompleteOrderDialog(order)
             }
         )
         binding.ordersRecyclerView.adapter = orderAdapter
@@ -78,6 +81,28 @@ class MyOrdersFragment : Fragment() {
         viewModel.error.observe(viewLifecycleOwner) { error ->
             error?.let {
                 Toast.makeText(requireContext(), it, Toast.LENGTH_LONG).show()
+            }
+        }
+        
+        viewModel.completeSuccess.observe(viewLifecycleOwner) { order ->
+            order?.let {
+                val paymentMsg = when (order.payment_method) {
+                    "COD" -> "\n💵 Đã thu tiền mặt: ${order.tong_thanh_toan}"
+                    else -> ""
+                }
+                
+                android.app.AlertDialog.Builder(requireContext())
+                    .setTitle("🎉 Thành công!")
+                    .setMessage(
+                        "Đơn hàng ${order.ma_don_hang} đã hoàn tất$paymentMsg\n\n" +
+                        "✅ Trạng thái: Hoàn tất\n" +
+                        "✅ Thanh toán: Đã thanh toán"
+                    )
+                    .setPositiveButton("OK") { _, _ ->
+                        viewModel.loadMyOrders(currentStatus)
+                    }
+                    .setCancelable(false)
+                    .show()
             }
         }
     }
@@ -130,6 +155,51 @@ class MyOrdersFragment : Fragment() {
         } catch (e: Exception) {
             Toast.makeText(requireContext(), "Không thể mở bản đồ: ${e.message}", Toast.LENGTH_SHORT).show()
         }
+    }
+    
+    private fun showCompleteOrderDialog(order: com.example.foodapp.data.models.Order) {
+        val paymentInfo = when (order.payment_method) {
+            "COD" -> "\n💵 Thu tiền mặt: ${order.tong_thanh_toan}"
+            "VNPay", "MoMo" -> "\n💳 Đã thanh toán online: ${order.payment_method}"
+            else -> "\n💰 Số tiền: ${order.tong_thanh_toan}"
+        }
+        
+        val statusText = when (order.payment_status.lowercase()) {
+            "pending" -> "Chưa thanh toán"
+            "paid" -> "Đã thanh toán"
+            "failed" -> "Thanh toán thất bại"
+            else -> order.payment_status
+        }
+        
+        // Kiểm tra nếu đã thanh toán (hỗ trợ cả "paid" và "Đã thanh toán")
+        val isPaid = order.payment_status.lowercase() == "paid" || 
+                     order.payment_status == "Đã thanh toán"
+        
+        val message = if (!isPaid) {
+            // Chưa thanh toán -> Cần cập nhật trạng thái thanh toán + hoàn tất
+            "Xác nhận đã giao hàng và thu tiền thành công?\n\n" +
+            "📦 Mã đơn: ${order.ma_don_hang}$paymentInfo\n" +
+            "📊 Trạng thái hiện tại: $statusText\n\n" +
+            "✅ Hệ thống sẽ tự động:\n" +
+            "   • Cập nhật trạng thái → ĐÃ THANH TOÁN\n" +
+            "   • Hoàn tất đơn hàng"
+        } else {
+            // Đã thanh toán rồi -> Chỉ hoàn tất đơn hàng
+            "Xác nhận đã giao hàng thành công?\n\n" +
+            "📦 Mã đơn: ${order.ma_don_hang}$paymentInfo\n" +
+            "📊 Trạng thái: $statusText\n\n" +
+            "✅ Chỉ cập nhật trạng thái đơn hàng → HOÀN TẤT\n" +
+            "(Trạng thái thanh toán đã đúng, không cần thay đổi)"
+        }
+        
+        android.app.AlertDialog.Builder(requireContext())
+            .setTitle("✅ Hoàn tất đơn hàng")
+            .setMessage(message)
+            .setPositiveButton("Xác nhận") { _, _ ->
+                viewModel.completeOrder(order.id, order.payment_status)
+            }
+            .setNegativeButton("Hủy", null)
+            .show()
     }
     
     override fun onResume() {

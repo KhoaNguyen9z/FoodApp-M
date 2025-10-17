@@ -19,6 +19,9 @@ class MyOrdersViewModel(private val repository: ShipperRepository) : ViewModel()
     private val _error = MutableLiveData<String?>()
     val error: LiveData<String?> = _error
     
+    private val _completeSuccess = MutableLiveData<Order?>()
+    val completeSuccess: LiveData<Order?> = _completeSuccess
+    
     fun loadMyOrders(status: String? = null) {
         viewModelScope.launch {
             _isLoading.value = true
@@ -31,6 +34,42 @@ class MyOrdersViewModel(private val repository: ShipperRepository) : ViewModel()
                 result.onFailure { exception ->
                     _error.value = exception.message
                 }
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+    
+    fun completeOrder(orderId: Int, currentPaymentStatus: String) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            _error.value = null
+            try {
+                // Kiểm tra nếu đã thanh toán (hỗ trợ cả "paid" và "Đã thanh toán")
+                val isPaid = currentPaymentStatus.lowercase() == "paid" || 
+                             currentPaymentStatus == "Đã thanh toán"
+                
+                // Chỉ cập nhật trạng thái thanh toán nếu CHƯA thanh toán
+                if (!isPaid) {
+                    val paymentResult = repository.updatePaymentStatus(orderId, "paid")
+                    
+                    if (paymentResult.isFailure) {
+                        _error.value = "Không thể cập nhật trạng thái thanh toán: ${paymentResult.exceptionOrNull()?.message}"
+                        _isLoading.value = false
+                        return@launch
+                    }
+                }
+                
+                // Hoàn tất đơn hàng (luôn thực hiện)
+                val completeResult = repository.completeOrder(orderId)
+                completeResult.onSuccess { order ->
+                    _completeSuccess.value = order
+                }
+                completeResult.onFailure { exception ->
+                    _error.value = exception.message
+                }
+            } catch (e: Exception) {
+                _error.value = "Lỗi: ${e.message}"
             } finally {
                 _isLoading.value = false
             }

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Selected state - màu đỏ #E2002B -->
+    <item android:color="#E2002B" android:state_checked="true"/>
+    <!-- Normal state - màu xám -->
+    <item android:color="#757575"/>
+</selector>

@@ -73,6 +73,9 @@ dependencies {
     // Swipe Refresh Layout
     implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.1.0")
     
+    // Email Validation (RFC 5321 compliant)
+    implementation("commons-validator:commons-validator:1.7")
+    
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

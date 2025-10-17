@@ -79,6 +79,24 @@ class ShipperRepository(private val apiService: ShipperApiService) {
         }
     }
     
+    suspend fun updatePaymentStatus(orderId: Int, paymentStatus: String): Result<Order> = withContext(Dispatchers.IO) {
+        try {
+            val response = apiService.updatePaymentStatus(orderId, UpdatePaymentRequest(paymentStatus))
+            if (response.isSuccessful) {
+                val body = response.body()
+                if (body?.success == true && body.data != null) {
+                    Result.success(body.data)
+                } else {
+                    Result.failure(Exception(body?.message ?: "Không thể cập nhật trạng thái thanh toán"))
+                }
+            } else {
+                Result.failure(Exception("Lỗi kết nối: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+    
     suspend fun getMyOrders(status: String? = null): Result<List<Order>> = withContext(Dispatchers.IO) {
         try {
             val response = apiService.getMyOrders(status)

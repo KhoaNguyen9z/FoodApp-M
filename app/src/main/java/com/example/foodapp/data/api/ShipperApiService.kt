@@ -18,6 +18,12 @@ interface ShipperApiService {
     @POST("orders/{id}/complete")
     suspend fun completeOrder(@Path("id") orderId: Int): Response<ApiResponse<Order>>
     
+    @POST("orders/{id}/update-payment")
+    suspend fun updatePaymentStatus(
+        @Path("id") orderId: Int,
+        @Body request: UpdatePaymentRequest
+    ): Response<ApiResponse<Order>>
+    
     @GET("orders/my-orders")
     suspend fun getMyOrders(
         @Query("status") status: String? = null
