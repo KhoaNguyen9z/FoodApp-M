@@ -12,6 +12,9 @@ import com.example.foodapp.data.repository.ShipperRepository
 import com.example.foodapp.databinding.FragmentMyOrdersBinding
 import com.example.foodapp.ui.adapter.OrderAdapter
 import com.example.foodapp.ui.detail.OrderDetailActivity
+import com.example.foodapp.utils.showError
+import com.example.foodapp.utils.hideError
+import com.example.foodapp.utils.isNetworkAvailable
 import com.google.android.material.tabs.TabLayout
 
 class MyOrdersFragment : Fragment() {
@@ -73,17 +76,37 @@ class MyOrdersFragment : Fragment() {
     
     private fun setupObservers() {
         viewModel.orders.observe(viewLifecycleOwner) { orders ->
+            // Ẩn error state khi có dữ liệu
+            binding.root.hideError()
+            
             orderAdapter.submitList(orders)
             binding.emptyTextView.visibility = if (orders.isEmpty()) View.VISIBLE else View.GONE
+            binding.ordersRecyclerView.visibility = if (orders.isNotEmpty()) View.VISIBLE else View.GONE
         }
         
         viewModel.isLoading.observe(viewLifecycleOwner) { isLoading ->
             binding.progressBar.visibility = if (isLoading) View.VISIBLE else View.GONE
+            
+            // Ẩn error state khi đang loading
+            if (isLoading) {
+                binding.root.hideError()
+            }
         }
         
         viewModel.error.observe(viewLifecycleOwner) { error ->
-            error?.let {
-                Toast.makeText(requireContext(), it, Toast.LENGTH_LONG).show()
+            error?.let { errorMessage ->
+                // Ẩn RecyclerView và EmptyView khi có lỗi
+                binding.ordersRecyclerView.visibility = View.GONE
+                binding.emptyTextView.visibility = View.GONE
+                
+                // Hiển thị error state thay vì Toast
+                val exception = Exception(errorMessage)
+                binding.root.showError(
+                    exception = exception,
+                    onRetryClick = {
+                        loadOrdersWithFilter()
+                    }
+                )
             }
         }
         
@@ -303,6 +326,24 @@ class MyOrdersFragment : Fragment() {
     
     private fun loadOrdersWithFilter() {
         android.util.Log.d("MyOrdersFragment", "Loading orders: status=$currentStatus, startDate=$startDate, endDate=$endDate")
+        
+        // Kiểm tra kết nối mạng trước khi gọi API
+        if (!isNetworkAvailable()) {
+            // Ẩn RecyclerView và EmptyView
+            binding.ordersRecyclerView.visibility = View.GONE
+            binding.emptyTextView.visibility = View.GONE
+            binding.progressBar.visibility = View.GONE
+            
+            // Hiển thị error state cho mất kết nối mạng
+            binding.root.showError(
+                exception = Exception("Không có kết nối mạng"),
+                onRetryClick = {
+                    loadOrdersWithFilter()
+                }
+            )
+            return
+        }
+        
         viewModel.loadMyOrders(currentStatus, startDate, endDate)
     }
     

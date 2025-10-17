@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:gravity="center"
+    android:padding="32dp"
+    android:background="@android:color/white">
+
+    <!-- Icon lỗi -->
+    <ImageView
+        android:id="@+id/errorIcon"
+        android:layout_width="120dp"
+        android:layout_height="120dp"
+        android:src="@drawable/ic_error_outline_24"
+        android:layout_marginBottom="24dp"
+        app:tint="#757575"/>
+
+    <!-- Tiêu đề lỗi -->
+    <TextView
+        android:id="@+id/errorTitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Oops! Có lỗi xảy ra"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        android:textColor="#212121"
+        android:layout_marginBottom="12dp"
+        android:gravity="center"/>
+
+    <!-- Mô tả lỗi -->
+    <TextView
+        android:id="@+id/errorMessage"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Vui lòng kiểm tra kết nối mạng và thử lại"
+        android:textSize="14sp"
+        android:textColor="#757575"
+        android:layout_marginBottom="32dp"
+        android:gravity="center"
+        android:lineSpacingMultiplier="1.2"/>
+
+    <!-- Nút thử lại -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/retryButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="🔄 Thử lại"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:paddingHorizontal="32dp"
+        android:paddingVertical="12dp"
+        app:backgroundTint="?attr/colorPrimary"
+        app:cornerRadius="8dp"
+        android:textColor="@android:color/white"/>
+
+    <!-- Nút quay lại (optional) -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/backButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:text="↩️ Quay lại"
+        android:textSize="14sp"
+        android:paddingHorizontal="24dp"
+        android:paddingVertical="8dp"
+        android:visibility="gone"
+        style="@style/Widget.Material3.Button.TextButton"
+        app:backgroundTint="@android:color/transparent"
+        android:textColor="?attr/colorPrimary"/>
+
+</LinearLayout>

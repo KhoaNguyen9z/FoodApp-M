@@ -13,6 +13,9 @@ import com.example.foodapp.data.api.RetrofitClient
 import com.example.foodapp.data.repository.ShipperRepository
 import com.example.foodapp.databinding.FragmentProfileBinding
 import com.example.foodapp.utils.TokenManager
+import com.example.foodapp.utils.showError
+import com.example.foodapp.utils.hideError
+import com.example.foodapp.utils.isNetworkAvailable
 import kotlinx.coroutines.launch
 
 class ProfileFragment : Fragment() {
@@ -45,12 +48,18 @@ class ProfileFragment : Fragment() {
     }
     
     private fun displayUserInfo() {
+        // Kiểm tra binding trước khi sử dụng
+        if (_binding == null) return
+        
         binding.nameTextView.text = tokenManager.getUserName() ?: "Shipper"
         binding.emailTextView.text = tokenManager.getUserEmail() ?: ""
         binding.phoneTextView.text = tokenManager.getUserPhone() ?: ""
     }
     
     private fun setupLogoutButton() {
+        // Kiểm tra binding trước khi sử dụng
+        if (_binding == null) return
+        
         binding.logoutButton.setOnClickListener {
             android.app.AlertDialog.Builder(requireContext())
                 .setTitle("Xác nhận đăng xuất")
@@ -64,8 +73,12 @@ class ProfileFragment : Fragment() {
     }
     
     private fun performLogout() {
-        lifecycleScope.launch {
+        // Sử dụng viewLifecycleOwner.lifecycleScope thay vì lifecycleScope
+        viewLifecycleOwner.lifecycleScope.launch {
             try {
+                // Kiểm tra binding trước khi sử dụng
+                if (_binding == null) return@launch
+                
                 // Gọi API logout
                 repository.logout()
                 
@@ -80,42 +93,88 @@ class ProfileFragment : Fragment() {
                 startActivity(intent)
                 
             } catch (e: Exception) {
-                Toast.makeText(requireContext(), "Lỗi đăng xuất: ${e.message}", Toast.LENGTH_LONG).show()
+                // Kiểm tra context vẫn còn
+                if (isAdded && context != null) {
+                    Toast.makeText(requireContext(), "Lỗi đăng xuất: ${e.message}", Toast.LENGTH_LONG).show()
+                }
             }
         }
     }
     
     private fun loadStatistics() {
-        lifecycleScope.launch {
+        // Kiểm tra binding trước khi sử dụng
+        if (_binding == null) return
+        
+        // Kiểm tra kết nối mạng
+        if (!isNetworkAvailable()) {
+            // Hiển thị 0 và error state nếu cần
+            if (_binding != null) {
+                binding.completedCountTextView.text = "0"
+                binding.cancelledCountTextView.text = "0"
+                binding.expiredCountTextView.text = "0"
+            }
+            return
+        }
+        
+        // Sử dụng viewLifecycleOwner.lifecycleScope
+        viewLifecycleOwner.lifecycleScope.launch {
             try {
+                // Kiểm tra binding trước mỗi lần sử dụng
+                if (_binding == null) return@launch
+                
+                // Ẩn error state nếu có
+                binding.root.hideError()
+                
                 // Load tất cả đơn hàng để thống kê
                 val completedResult = repository.getMyOrders("Hoàn tất")
-                val cancelledResult = repository.getMyOrders("Đã hủy")
+                val cancelledResult = repository.getMyOrders("Bị hủy")
                 val expiredResult = repository.getMyOrders("Quá hạn")
                 
+                // Kiểm tra binding trước khi cập nhật UI
+                if (_binding == null) return@launch
+                
                 completedResult.onSuccess { orders ->
-                    binding.completedCountTextView.text = orders.size.toString()
+                    if (_binding != null) {
+                        binding.completedCountTextView.text = orders.size.toString()
+                    }
                 }
                 
                 cancelledResult.onSuccess { orders ->
-                    binding.cancelledCountTextView.text = orders.size.toString()
+                    if (_binding != null) {
+                        binding.cancelledCountTextView.text = orders.size.toString()
+                    }
                 }
                 
                 expiredResult.onSuccess { orders ->
-                    binding.expiredCountTextView.text = orders.size.toString()
+                    if (_binding != null) {
+                        binding.expiredCountTextView.text = orders.size.toString()
+                    }
                 }
                 
             } catch (e: Exception) {
                 android.util.Log.e("ProfileFragment", "Error loading statistics: ${e.message}")
-                // Hiển thị 0 nếu có lỗi
-                binding.completedCountTextView.text = "0"
-                binding.cancelledCountTextView.text = "0"
-                binding.expiredCountTextView.text = "0"
+                
+                // Kiểm tra binding trước khi cập nhật UI
+                if (_binding != null) {
+                    binding.completedCountTextView.text = "0"
+                    binding.cancelledCountTextView.text = "0"
+                    binding.expiredCountTextView.text = "0"
+                }
+                
+                // Có thể hiển thị error state nếu muốn
+                // if (_binding != null) {
+                //     binding.root.showError(e) { loadStatistics() }
+                // }
             }
         }
     }
     
     override fun onDestroyView() {
+        // Cleanup error state trước khi destroy
+        if (_binding != null) {
+            binding.root.hideError()
+        }
+        
         super.onDestroyView()
         _binding = null
     }
