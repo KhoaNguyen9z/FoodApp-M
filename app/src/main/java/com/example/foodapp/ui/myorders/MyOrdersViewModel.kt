@@ -22,16 +22,23 @@ class MyOrdersViewModel(private val repository: ShipperRepository) : ViewModel()
     private val _completeSuccess = MutableLiveData<Order?>()
     val completeSuccess: LiveData<Order?> = _completeSuccess
     
-    fun loadMyOrders(status: String? = null) {
+    fun loadMyOrders(status: String? = null, startDate: String? = null, endDate: String? = null) {
         viewModelScope.launch {
             _isLoading.value = true
             _error.value = null
             try {
-                val result = repository.getMyOrders(status)
+                android.util.Log.d("MyOrdersViewModel", "Loading orders with: status=$status, startDate=$startDate, endDate=$endDate")
+                
+                val result = repository.getMyOrders(status, startDate, endDate)
                 result.onSuccess { orderList ->
+                    android.util.Log.d("MyOrdersViewModel", "Received ${orderList.size} orders")
+                    orderList.forEach { order ->
+                        android.util.Log.d("MyOrdersViewModel", "Order: ${order.ma_don_hang}, Status: ${order.trang_thai}, Created: ${order.ngay_tao}")
+                    }
                     _orders.value = orderList
                 }
                 result.onFailure { exception ->
+                    android.util.Log.e("MyOrdersViewModel", "Error loading orders: ${exception.message}")
                     _error.value = exception.message
                 }
             } finally {

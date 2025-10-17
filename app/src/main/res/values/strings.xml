@@ -1,3 +1,32 @@
 <resources>
     <string name="app_name">Shipper App</string>
+    
+    <!-- Material DatePicker Strings (Vietnamese) -->
+    <string name="mtrl_picker_text_input_date_hint">Chọn ngày</string>
+    <string name="mtrl_picker_text_input_date_range_start_hint">Ngày bắt đầu</string>
+    <string name="mtrl_picker_text_input_date_range_end_hint">Ngày kết thúc</string>
+    <string name="mtrl_picker_navigate_to_year_description">Chuyển đến năm %1$s</string>
+    <string name="mtrl_picker_navigate_to_current_year_description">Chuyển đến năm hiện tại</string>
+    <string name="mtrl_picker_announce_current_selection">Lựa chọn hiện tại: %1$s</string>
+    <string name="mtrl_picker_save">Xác nhận</string>
+    <string name="mtrl_picker_cancel">Hủy</string>
+    <string name="mtrl_picker_range_header_selected">%1$s – %2$s</string>
+    <string name="mtrl_picker_range_header_unselected">Ngày bắt đầu – Ngày kết thúc</string>
+    <string name="mtrl_picker_invalid_range">Khoảng thời gian không hợp lệ.</string>
+    <string name="mtrl_picker_day_of_week_column_header">Cột ngày: %1$s</string>
+    <string name="mtrl_picker_toggle_to_calendar_input_mode">Chuyển sang chế độ nhập lịch</string>
+    <string name="mtrl_picker_toggle_to_text_input_mode">Chuyển sang chế độ nhập văn bản</string>
+    
+    <!-- Tháng tiếng Việt -->
+    <string name="mtrl_picker_date_header_title">Chọn ngày</string>
+    <string name="mtrl_picker_date_header_unselected">Chọn ngày</string>
+    
+    <!-- Tên ngày trong tuần (viết tắt) -->
+    <string name="mtrl_picker_day_of_week_sunday">CN</string>
+    <string name="mtrl_picker_day_of_week_monday">T2</string>
+    <string name="mtrl_picker_day_of_week_tuesday">T3</string>
+    <string name="mtrl_picker_day_of_week_wednesday">T4</string>
+    <string name="mtrl_picker_day_of_week_thursday">T5</string>
+    <string name="mtrl_picker_day_of_week_friday">T6</string>
+    <string name="mtrl_picker_day_of_week_saturday">T7</string>
 </resources>

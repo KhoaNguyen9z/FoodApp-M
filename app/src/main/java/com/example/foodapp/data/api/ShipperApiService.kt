@@ -26,7 +26,9 @@ interface ShipperApiService {
     
     @GET("orders/my-orders")
     suspend fun getMyOrders(
-        @Query("status") status: String? = null
+        @Query("status") status: String? = null,
+        @Query("start_date") startDate: String? = null,
+        @Query("end_date") endDate: String? = null
     ): Response<ApiResponse<List<Order>>>
     
     @POST("logout")

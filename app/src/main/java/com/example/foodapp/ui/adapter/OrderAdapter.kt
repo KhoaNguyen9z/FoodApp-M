@@ -35,6 +35,18 @@ class OrderAdapter(
         fun bind(order: Order) {
             binding.orderCodeTextView.text = order.ma_don_hang
             binding.statusTextView.text = order.trang_thai
+            
+            // Set màu cho status text dựa theo trạng thái
+            binding.statusTextView.setTextColor(
+                when (order.trang_thai) {
+                    "Đang giao" -> android.graphics.Color.parseColor("#2196F3") // Xanh dương
+                    "Hoàn tất" -> android.graphics.Color.parseColor("#4CAF50") // Xanh lá
+                    "Quá hạn" -> android.graphics.Color.parseColor("#FF9800") // Cam
+                    "Bị hủy" -> android.graphics.Color.parseColor("#F44336") // Đỏ
+                    else -> android.graphics.Color.parseColor("#757575") // Xám
+                }
+            )
+            
             binding.customerNameTextView.text = order.khach_hang.ten
             binding.customerPhoneTextView.text = order.khach_hang.so_dien_thoai
             binding.addressTextView.text = order.dia_chi_giao
@@ -42,13 +54,21 @@ class OrderAdapter(
             binding.paymentMethodTextView.text = order.payment_method
             binding.paymentStatusTextView.text = getPaymentStatusText(order.payment_status)
             
+            // Hiển thị thời gian (ưu tiên ngày tạo, fallback sang ngày nhận)
+            android.util.Log.d("OrderAdapter", "Order ${order.ma_don_hang} - ngay_tao: ${order.ngay_tao}, ngay_nhan: ${order.ngay_nhan}")
+            binding.createdDateTextView.text = when {
+                !order.ngay_tao.isNullOrBlank() -> order.ngay_tao
+                !order.ngay_nhan.isNullOrBlank() -> order.ngay_nhan
+                else -> "N/A"
+            }
+            
             // Set color based on payment status
             binding.paymentStatusTextView.setTextColor(
                 when (order.payment_status) {
-                    "paid" -> android.graphics.Color.parseColor("#4CAF50") // Green
-                    "pending" -> android.graphics.Color.parseColor("#FF9800") // Orange
-                    "failed" -> android.graphics.Color.parseColor("#F44336") // Red
-                    else -> android.graphics.Color.parseColor("#757575") // Gray
+                    "paid" -> android.graphics.Color.parseColor("#4CAF50") // Xanh lá - Đã thanh toán
+                    "pending" -> android.graphics.Color.parseColor("#F44336") // Đỏ - Chưa thanh toán
+                    "failed" -> android.graphics.Color.parseColor("#F44336") // Đỏ - Thanh toán thất bại
+                    else -> android.graphics.Color.parseColor("#757575") // Xám
                 }
             )
             
@@ -72,8 +92,11 @@ class OrderAdapter(
                 binding.completeOrderButton.visibility = android.view.View.GONE
             }
             
-            // Map button is always visible if callback is provided and order has address
-            if (onViewMapClick != null && order.dia_chi_giao.isNotBlank()) {
+            // Map button - ẩn cho đơn "Quá hạn" và "Bị hủy"
+            if (onViewMapClick != null && 
+                order.dia_chi_giao.isNotBlank() && 
+                order.trang_thai != "Quá hạn" && 
+                order.trang_thai != "Bị hủy") {
                 binding.viewMapButton.visibility = android.view.View.VISIBLE
                 binding.viewMapButton.setOnClickListener {
                     onViewMapClick.invoke(order)

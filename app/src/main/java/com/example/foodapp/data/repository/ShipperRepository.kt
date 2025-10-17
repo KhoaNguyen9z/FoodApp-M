@@ -97,20 +97,36 @@ class ShipperRepository(private val apiService: ShipperApiService) {
         }
     }
     
-    suspend fun getMyOrders(status: String? = null): Result<List<Order>> = withContext(Dispatchers.IO) {
+    suspend fun getMyOrders(status: String? = null, startDate: String? = null, endDate: String? = null): Result<List<Order>> = withContext(Dispatchers.IO) {
         try {
-            val response = apiService.getMyOrders(status)
+            android.util.Log.d("ShipperRepository", "Calling API with status=$status, startDate=$startDate, endDate=$endDate")
+            val response = apiService.getMyOrders(status, startDate, endDate)
+            android.util.Log.d("ShipperRepository", "API Response Code: ${response.code()}")
+            
             if (response.isSuccessful) {
                 val body = response.body()
+                android.util.Log.d("ShipperRepository", "Response body success: ${body?.success}, data size: ${body?.data?.size}")
+                
                 if (body?.success == true) {
-                    Result.success(body.data ?: emptyList())
+                    val orders = body.data ?: emptyList()
+                    android.util.Log.d("ShipperRepository", "Parsed ${orders.size} orders")
+                    orders.take(5).forEach { order ->
+                        android.util.Log.d("ShipperRepository", "Order ${order.ma_don_hang}: ngay_tao=${order.ngay_tao}, ngay_nhan=${order.ngay_nhan}")
+                    }
+                    Result.success(orders)
                 } else {
                     Result.failure(Exception(body?.message ?: "Không thể lấy danh sách đơn hàng"))
                 }
             } else {
+                val errorBody = response.errorBody()?.string()
+                android.util.Log.e("ShipperRepository", "Error response: $errorBody")
                 Result.failure(Exception("Lỗi kết nối: ${response.code()}"))
             }
+        } catch (e: com.google.gson.JsonSyntaxException) {
+            android.util.Log.e("ShipperRepository", "JSON parsing error: ${e.message}", e)
+            Result.failure(Exception("Lỗi phân tích dữ liệu từ server. Vui lòng thử lại sau."))
         } catch (e: Exception) {
+            android.util.Log.e("ShipperRepository", "Exception: ${e.message}", e)
             Result.failure(e)
         }
     }

@@ -15,4 +15,39 @@
     </style>
 
     <style name="Theme.FoodApp" parent="Base.Theme.FoodApp" />
+    
+    <!-- Compact DatePicker Theme -->
+    <style name="CompactDatePickerTheme" parent="ThemeOverlay.Material3.MaterialCalendar">
+        <item name="colorPrimary">#E2002B</item>
+        <item name="colorOnPrimary">#FFFFFF</item>
+        <item name="colorSurface">#FFFFFF</item>
+        <item name="colorOnSurface">#000000</item>
+        <item name="shapeAppearanceMediumComponent">@style/ShapeAppearance.Material3.Corner.Medium</item>
+        <item name="buttonBarPositiveButtonStyle">@style/PositiveButtonStyle</item>
+        <item name="buttonBarNegativeButtonStyle">@style/NegativeButtonStyle</item>
+        <!-- Giảm padding để gọn hơn -->
+        <item name="materialCalendarStyle">@style/Widget.Material3.MaterialCalendar.Compact</item>
+        <item name="android:windowIsFloating">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+    </style>
+    
+    <style name="Widget.Material3.MaterialCalendar.Compact" parent="Widget.Material3.MaterialCalendar">
+        <item name="android:padding">8dp</item>
+    </style>
+    
+    <style name="PositiveButtonStyle" parent="Widget.Material3.Button.TextButton">
+        <item name="android:textColor">#E2002B</item>
+    </style>
+    
+    <style name="NegativeButtonStyle" parent="Widget.Material3.Button.TextButton">
+        <item name="android:textColor">#666666</item>
+    </style>
+    
+    <!-- Dialog style để làm cho DatePicker không fullscreen -->
+    <style name="MaterialCalendarDialog" parent="ThemeOverlay.Material3.MaterialCalendar">
+        <item name="colorPrimary">#E2002B</item>
+        <item name="android:windowIsFloating">true</item>
+        <item name="android:windowMinWidthMajor">90%</item>
+        <item name="android:windowMinWidthMinor">90%</item>
+    </style>
 </resources>

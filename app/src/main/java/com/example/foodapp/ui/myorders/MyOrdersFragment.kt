@@ -23,6 +23,8 @@ class MyOrdersFragment : Fragment() {
     private lateinit var orderAdapter: OrderAdapter
     
     private var currentStatus: String? = "Đang giao"
+    private var startDate: String? = null
+    private var endDate: String? = null
     
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -44,8 +46,9 @@ class MyOrdersFragment : Fragment() {
         setupObservers()
         setupSwipeRefresh()
         setupTabs()
+        setupDateFilter()
         
-        viewModel.loadMyOrders(currentStatus)
+        loadOrdersWithFilter()
     }
     
     private fun setupRecyclerView() {
@@ -99,7 +102,7 @@ class MyOrdersFragment : Fragment() {
                         "✅ Thanh toán: Đã thanh toán"
                     )
                     .setPositiveButton("OK") { _, _ ->
-                        viewModel.loadMyOrders(currentStatus)
+                        loadOrdersWithFilter()
                     }
                     .setCancelable(false)
                     .show()
@@ -109,7 +112,7 @@ class MyOrdersFragment : Fragment() {
     
     private fun setupSwipeRefresh() {
         binding.swipeRefreshLayout.setOnRefreshListener {
-            viewModel.loadMyOrders(currentStatus)
+            loadOrdersWithFilter()
             binding.swipeRefreshLayout.isRefreshing = false
         }
     }
@@ -120,15 +123,187 @@ class MyOrdersFragment : Fragment() {
                 currentStatus = when (tab?.position) {
                     0 -> "Đang giao"
                     1 -> "Hoàn tất"
-                    2 -> null
+                    2 -> "Quá hạn"
+                    3 -> "Bị hủy"
+                    4 -> null // Tất cả
                     else -> null
                 }
-                viewModel.loadMyOrders(currentStatus)
+                
+                // Hiện/ẩn date filter chỉ cho tab "Hoàn tất", "Quá hạn", "Bị hủy"
+                if (tab?.position == 1 || tab?.position == 2 || tab?.position == 3) {
+                    binding.dateFilterLayout.visibility = View.VISIBLE
+                } else {
+                    binding.dateFilterLayout.visibility = View.GONE
+                    // Reset date filter khi chuyển tab
+                    startDate = null
+                    endDate = null
+                    binding.chipGroupDateFilter.clearCheck()
+                    binding.tvSelectedDateRange.visibility = View.GONE
+                }
+                
+                loadOrdersWithFilter()
             }
             
             override fun onTabUnselected(tab: TabLayout.Tab?) {}
             override fun onTabReselected(tab: TabLayout.Tab?) {}
         })
+    }
+    
+    private fun setupDateFilter() {
+        // Hôm nay
+        binding.chipToday.setOnClickListener {
+            setTodayFilter()
+        }
+        
+        // 7 ngày qua
+        binding.chip7Days.setOnClickListener {
+            set7DaysFilter()
+        }
+        
+        // Tháng này
+        binding.chipThisMonth.setOnClickListener {
+            setThisMonthFilter()
+        }
+        
+        // Tùy chọn ngày
+        binding.chipCustomDate.setOnClickListener {
+            showDateRangePicker()
+        }
+    }
+    
+    private fun setTodayFilter() {
+        val calendar = java.util.Calendar.getInstance(java.util.TimeZone.getTimeZone("Asia/Ho_Chi_Minh"))
+        // Đặt về đầu ngày (00:00:00)
+        calendar.set(java.util.Calendar.HOUR_OF_DAY, 0)
+        calendar.set(java.util.Calendar.MINUTE, 0)
+        calendar.set(java.util.Calendar.SECOND, 0)
+        calendar.set(java.util.Calendar.MILLISECOND, 0)
+        
+        val sdf = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault())
+        sdf.timeZone = java.util.TimeZone.getTimeZone("Asia/Ho_Chi_Minh")
+        val today = sdf.format(calendar.time)
+        
+        startDate = today
+        endDate = today
+        
+        android.util.Log.d("MyOrdersFragment", "Today filter: startDate=$startDate, endDate=$endDate")
+        
+        val displayFormat = java.text.SimpleDateFormat("dd/MM/yyyy", java.util.Locale.getDefault())
+        updateDateRangeDisplay("Hôm nay (${displayFormat.format(calendar.time)})")
+        loadOrdersWithFilter()
+    }
+    
+    private fun set7DaysFilter() {
+        val calendar = java.util.Calendar.getInstance()
+        // Đặt về đầu ngày hiện tại
+        calendar.set(java.util.Calendar.HOUR_OF_DAY, 0)
+        calendar.set(java.util.Calendar.MINUTE, 0)
+        calendar.set(java.util.Calendar.SECOND, 0)
+        calendar.set(java.util.Calendar.MILLISECOND, 0)
+        
+        val sdf = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault())
+        val endDate = sdf.format(calendar.time)
+        
+        // Lùi 6 ngày (tổng 7 ngày bao gồm hôm nay)
+        calendar.add(java.util.Calendar.DAY_OF_YEAR, -6)
+        val startDate = sdf.format(calendar.time)
+        
+        this.startDate = startDate
+        this.endDate = endDate
+        
+        val displayFormat = java.text.SimpleDateFormat("dd/MM/yyyy", java.util.Locale.getDefault())
+        calendar.add(java.util.Calendar.DAY_OF_YEAR, 6) // Quay lại hôm nay để hiển thị
+        val endDisplay = displayFormat.format(calendar.time)
+        calendar.add(java.util.Calendar.DAY_OF_YEAR, -6) // Quay lại ngày đầu
+        val startDisplay = displayFormat.format(calendar.time)
+        
+        updateDateRangeDisplay("7 ngày qua ($startDisplay - $endDisplay)")
+        loadOrdersWithFilter()
+    }
+    
+    private fun setThisMonthFilter() {
+        val calendar = java.util.Calendar.getInstance()
+        // Đặt về đầu ngày hiện tại
+        calendar.set(java.util.Calendar.HOUR_OF_DAY, 0)
+        calendar.set(java.util.Calendar.MINUTE, 0)
+        calendar.set(java.util.Calendar.SECOND, 0)
+        calendar.set(java.util.Calendar.MILLISECOND, 0)
+        
+        val sdf = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault())
+        val endDate = sdf.format(calendar.time)
+        
+        // Đặt về ngày 1 của tháng
+        calendar.set(java.util.Calendar.DAY_OF_MONTH, 1)
+        val startDate = sdf.format(calendar.time)
+        
+        this.startDate = startDate
+        this.endDate = endDate
+        
+        val displayFormat = java.text.SimpleDateFormat("dd/MM/yyyy", java.util.Locale.getDefault())
+        val startDisplay = displayFormat.format(calendar.time)
+        // Quay lại hôm nay để hiển thị ngày cuối
+        calendar.set(java.util.Calendar.DAY_OF_MONTH, java.util.Calendar.getInstance().get(java.util.Calendar.DAY_OF_MONTH))
+        val endDisplay = displayFormat.format(calendar.time)
+        
+        updateDateRangeDisplay("Tháng này ($startDisplay - $endDisplay)")
+        loadOrdersWithFilter()
+    }
+    
+    private fun showDateRangePicker() {
+        // Sử dụng MaterialDatePicker với cấu hình compact
+        val locale = java.util.Locale("vi", "VN")
+        
+        val constraintsBuilder = com.google.android.material.datepicker.CalendarConstraints.Builder()
+        val today = com.google.android.material.datepicker.MaterialDatePicker.todayInUtcMilliseconds()
+        constraintsBuilder.setEnd(today)
+        
+        val builder = com.google.android.material.datepicker.MaterialDatePicker.Builder.dateRangePicker()
+        builder.setTitleText("Chọn khoảng thời gian")
+        builder.setCalendarConstraints(constraintsBuilder.build())
+        
+        // Set theme để hiển thị compact hơn
+        builder.setTheme(com.example.foodapp.R.style.MaterialCalendarDialog)
+        
+        val picker = builder.build()
+        
+        picker.addOnPositiveButtonClickListener { selection ->
+            val startMillis = selection.first
+            val endMillis = selection.second
+            
+            val calendar = java.util.Calendar.getInstance(java.util.TimeZone.getTimeZone("Asia/Ho_Chi_Minh"), locale)
+            
+            calendar.timeInMillis = startMillis
+            val sdf = java.text.SimpleDateFormat("yyyy-MM-dd", locale)
+            sdf.timeZone = java.util.TimeZone.getTimeZone("Asia/Ho_Chi_Minh")
+            startDate = sdf.format(calendar.time)
+            
+            calendar.timeInMillis = endMillis
+            endDate = sdf.format(calendar.time)
+            
+            val displayFormat = java.text.SimpleDateFormat("dd/MM/yyyy", locale)
+            displayFormat.timeZone = java.util.TimeZone.getTimeZone("Asia/Ho_Chi_Minh")
+            
+            calendar.timeInMillis = startMillis
+            val startDisplay = displayFormat.format(calendar.time)
+            calendar.timeInMillis = endMillis
+            val endDisplay = displayFormat.format(calendar.time)
+            
+            val displayText = "$startDisplay - $endDisplay"
+            updateDateRangeDisplay(displayText)
+            loadOrdersWithFilter()
+        }
+        
+        picker.show(parentFragmentManager, "DATE_RANGE_PICKER")
+    }
+    
+    private fun updateDateRangeDisplay(text: String) {
+        binding.tvSelectedDateRange.text = text
+        binding.tvSelectedDateRange.visibility = View.VISIBLE
+    }
+    
+    private fun loadOrdersWithFilter() {
+        android.util.Log.d("MyOrdersFragment", "Loading orders: status=$currentStatus, startDate=$startDate, endDate=$endDate")
+        viewModel.loadMyOrders(currentStatus, startDate, endDate)
     }
     
     private fun openMapWithAddress(address: String) {
@@ -158,53 +333,50 @@ class MyOrdersFragment : Fragment() {
     }
     
     private fun showCompleteOrderDialog(order: com.example.foodapp.data.models.Order) {
-        val paymentInfo = when (order.payment_method) {
-            "COD" -> "\n💵 Thu tiền mặt: ${order.tong_thanh_toan}"
-            "VNPay", "MoMo" -> "\n💳 Đã thanh toán online: ${order.payment_method}"
-            else -> "\n💰 Số tiền: ${order.tong_thanh_toan}"
-        }
+        // Tạo custom dialog với Material Design
+        val dialogView = layoutInflater.inflate(
+            com.example.foodapp.R.layout.dialog_complete_order, 
+            null
+        )
         
-        val statusText = when (order.payment_status.lowercase()) {
-            "pending" -> "Chưa thanh toán"
-            "paid" -> "Đã thanh toán"
-            "failed" -> "Thanh toán thất bại"
-            else -> order.payment_status
-        }
+        val tvOrderCode = dialogView.findViewById<android.widget.TextView>(com.example.foodapp.R.id.tvOrderCode)
+        val tvAmount = dialogView.findViewById<android.widget.TextView>(com.example.foodapp.R.id.tvAmount)
+        val tvPaymentStatus = dialogView.findViewById<android.widget.TextView>(com.example.foodapp.R.id.tvPaymentStatus)
         
-        // Kiểm tra nếu đã thanh toán (hỗ trợ cả "paid" và "Đã thanh toán")
+        tvOrderCode.text = order.ma_don_hang
+        tvAmount.text = order.tong_thanh_toan
+        
+        // Set payment status text and color
         val isPaid = order.payment_status.lowercase() == "paid" || 
                      order.payment_status == "Đã thanh toán"
         
-        val message = if (!isPaid) {
-            // Chưa thanh toán -> Cần cập nhật trạng thái thanh toán + hoàn tất
-            "Xác nhận đã giao hàng và thu tiền thành công?\n\n" +
-            "📦 Mã đơn: ${order.ma_don_hang}$paymentInfo\n" +
-            "📊 Trạng thái hiện tại: $statusText\n\n" +
-            "✅ Hệ thống sẽ tự động:\n" +
-            "   • Cập nhật trạng thái → ĐÃ THANH TOÁN\n" +
-            "   • Hoàn tất đơn hàng"
+        if (isPaid) {
+            tvPaymentStatus.text = "Đã thanh toán"
+            tvPaymentStatus.setTextColor(android.graphics.Color.parseColor("#4CAF50"))
         } else {
-            // Đã thanh toán rồi -> Chỉ hoàn tất đơn hàng
-            "Xác nhận đã giao hàng thành công?\n\n" +
-            "📦 Mã đơn: ${order.ma_don_hang}$paymentInfo\n" +
-            "📊 Trạng thái: $statusText\n\n" +
-            "✅ Chỉ cập nhật trạng thái đơn hàng → HOÀN TẤT\n" +
-            "(Trạng thái thanh toán đã đúng, không cần thay đổi)"
+            tvPaymentStatus.text = "Chưa thanh toán"
+            tvPaymentStatus.setTextColor(android.graphics.Color.parseColor("#FF9800"))
         }
         
-        android.app.AlertDialog.Builder(requireContext())
-            .setTitle("✅ Hoàn tất đơn hàng")
-            .setMessage(message)
-            .setPositiveButton("Xác nhận") { _, _ ->
+        val dialog = com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
+            .setView(dialogView)
+            .setPositiveButton("XÁC NHẬN") { _, _ ->
                 viewModel.completeOrder(order.id, order.payment_status)
             }
-            .setNegativeButton("Hủy", null)
-            .show()
+            .setNegativeButton("HỦY", null)
+            .create()
+        
+        dialog.show()
+        
+        // Tùy chỉnh màu nút
+        dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE)?.setTextColor(
+            android.graphics.Color.parseColor("#4CAF50")
+        )
     }
     
     override fun onResume() {
         super.onResume()
-        viewModel.loadMyOrders(currentStatus)
+        loadOrdersWithFilter()
     }
     
     override fun onDestroyView() {

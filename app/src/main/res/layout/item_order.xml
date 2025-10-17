@@ -158,6 +158,31 @@
                 android:textStyle="bold"/>
         </LinearLayout>
 
+        <!-- Ngày nhận đơn -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="📅 Ngày nhận:"
+                android:textSize="11sp"
+                android:textColor="#666666"/>
+
+            <TextView
+                android:id="@+id/createdDateTextView"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="17/10/2025 14:30"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:textColor="#666666"/>
+        </LinearLayout>
+
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"

@@ -22,6 +22,10 @@ class MainActivity : AppCompatActivity() {
     
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        // Set locale tiếng Việt cho toàn app
+        setLocale()
+        
         binding = ActivityMainNewBinding.inflate(layoutInflater)
         setContentView(binding.root)
         
@@ -96,5 +100,16 @@ class MainActivity : AppCompatActivity() {
         tokenManager.clearAll()
         startActivity(Intent(this, LoginActivity::class.java))
         finish()
+    }
+    
+    private fun setLocale() {
+        val locale = java.util.Locale("vi", "VN")
+        java.util.Locale.setDefault(locale)
+        
+        val config = resources.configuration
+        config.setLocale(locale)
+        
+        @Suppress("DEPRECATION")
+        resources.updateConfiguration(config, resources.displayMetrics)
     }
 }
