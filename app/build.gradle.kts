@@ -38,6 +38,14 @@ android {
     }
 }
 
+// Apply Google Services plugin only if google-services.json exists
+if (file("google-services.json").exists()) {
+    apply(plugin = "com.google.gms.google-services")
+    println("[build] google-services.json found: enabling Firebase services")
+} else {
+    println("[build] google-services.json missing: building without Firebase services. Add app/google-services.json to enable.")
+}
+
 dependencies {
 
     implementation(libs.androidx.core.ktx)
@@ -75,6 +83,10 @@ dependencies {
     
     // Email Validation (RFC 5321 compliant)
     implementation("commons-validator:commons-validator:1.7")
+
+    // Firebase Cloud Messaging for push notifications
+    implementation(platform("com.google.firebase:firebase-bom:33.4.0"))
+    implementation("com.google.firebase:firebase-messaging")
     
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

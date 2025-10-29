@@ -8,6 +8,12 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import com.example.foodapp.R
 import com.example.foodapp.databinding.ActivityMainNewBinding
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
+import android.os.Build
+import com.example.foodapp.push.FoodMessagingService
 import com.example.foodapp.ui.available.AvailableOrdersFragment
 import com.example.foodapp.ui.login.LoginActivity
 import com.example.foodapp.ui.myorders.MyOrdersFragment
@@ -33,11 +39,24 @@ class MainActivity : AppCompatActivity() {
         
         setSupportActionBar(binding.toolbar)
         
+        // Create notification channel and request notification permission on Android 13+
+        FoodMessagingService.createChannelIfNeeded(this)
+        requestNotificationPermissionIfNeeded()
+        
         setupBottomNavigation()
         
         // Set default fragment
         if (savedInstanceState == null) {
             loadFragment(AvailableOrdersFragment())
+        }
+    }
+    
+    private fun requestNotificationPermissionIfNeeded() {
+        if (Build.VERSION.SDK_INT >= 33) {
+            val granted = ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+            if (!granted) {
+                ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1001)
+            }
         }
     }
     

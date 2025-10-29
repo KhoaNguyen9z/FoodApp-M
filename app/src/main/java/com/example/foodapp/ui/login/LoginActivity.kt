@@ -22,6 +22,11 @@ class LoginActivity : AppCompatActivity() {
     private lateinit var viewModel: LoginViewModel
     private lateinit var tokenManager: TokenManager
     
+    // Client-side lockout state for this app session
+    private var failedAttempts: Int = 0
+    private var lockUntilMillis: Long = 0L
+    private var lockCountDown: android.os.CountDownTimer? = null
+    
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityLoginBinding.inflate(layoutInflater)
@@ -63,6 +68,9 @@ class LoginActivity : AppCompatActivity() {
                     loginData.user.so_dien_thoai
                 )
                 
+                // Reset lockout state on successful login
+                resetLockout()
+                
                 // Navigate to main screen
                 navigateToMain()
             }
@@ -70,6 +78,7 @@ class LoginActivity : AppCompatActivity() {
             result.onFailure { exception ->
                 // Phân loại lỗi và hiển thị thông báo chi tiết
                 handleLoginError(exception)
+                handleLockoutOnFailure()
             }
         }
     }
@@ -123,6 +132,42 @@ class LoginActivity : AppCompatActivity() {
         showErrorMessage(errorMessage)
     }
     
+    private fun handleLockoutOnFailure() {
+        // Tăng số lần thất bại và khóa nếu đạt ngưỡng
+        if (System.currentTimeMillis() < lockUntilMillis) return
+        failedAttempts += 1
+        if (failedAttempts >= 5) {
+            startLockout(durationMillis = 2 * 60 * 1000L)
+        }
+    }
+    
+    private fun startLockout(durationMillis: Long) {
+        lockUntilMillis = System.currentTimeMillis() + durationMillis
+        binding.loginButton.isEnabled = false
+        lockCountDown?.cancel()
+        lockCountDown = object : android.os.CountDownTimer(durationMillis, 1000) {
+            override fun onTick(millisUntilFinished: Long) {
+                val seconds = millisUntilFinished / 1000
+                val minutes = seconds / 60
+                val secs = seconds % 60
+                binding.loginButton.text = String.format("Thử lại sau %02d:%02d", minutes, secs)
+            }
+            override fun onFinish() {
+                resetLockout()
+            }
+        }.start()
+        showErrorMessage("Bạn đã nhập sai 5 lần. Nút đăng nhập bị khóa 2 phút để bảo vệ tài khoản.")
+    }
+    
+    private fun resetLockout() {
+        failedAttempts = 0
+        lockUntilMillis = 0L
+        lockCountDown?.cancel()
+        lockCountDown = null
+        binding.loginButton.isEnabled = true
+        binding.loginButton.text = "Đăng nhập"
+    }
+    
     /**
      * Hiển thị thông báo lỗi
      */
@@ -145,6 +190,15 @@ class LoginActivity : AppCompatActivity() {
     
     private fun setupListeners() {
         binding.loginButton.setOnClickListener {
+            // Chặn nếu đang trong thời gian khóa
+            if (System.currentTimeMillis() < lockUntilMillis) {
+                val remaining = lockUntilMillis - System.currentTimeMillis()
+                val seconds = remaining / 1000
+                val minutes = seconds / 60
+                val secs = seconds % 60
+                showErrorMessage("Nút đăng nhập đang bị khóa. Vui lòng thử lại sau ${String.format("%02d:%02d", minutes, secs)}.")
+                return@setOnClickListener
+            }
             val email = binding.emailEditText.text.toString().trim()
             val password = binding.passwordEditText.text.toString()
             
@@ -182,6 +236,7 @@ class LoginActivity : AppCompatActivity() {
             if (hasFocus) {
                 hideErrorMessage()
                 binding.passwordInputLayout.error = null
+                // Cho phép nhập lại trong khi khóa vẫn giữ
             } else {
                 val password = binding.passwordEditText.text.toString()
                 if (password.isNotEmpty()) {

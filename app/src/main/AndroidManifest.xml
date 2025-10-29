@@ -4,6 +4,8 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- Android 13+ notification runtime permission -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" tools:targetApi="tiramisu" />
 
     <application
         android:allowBackup="true"
@@ -16,6 +18,19 @@
         android:theme="@style/Theme.FoodApp"
         android:usesCleartextTraffic="true"
         tools:targetApi="31">
+        
+        <!-- Default notification icon for FCM -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@drawable/foodking" />
+        
+        <service
+            android:name=".push.FoodMessagingService"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
         
         <activity
             android:name=".ui.login.LoginActivity"
