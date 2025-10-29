@@ -155,8 +155,8 @@ class MyOrdersFragment : Fragment() {
                     else -> null
                 }
                 
-                // Hiện/ẩn date filter chỉ cho tab "Hoàn tất", "Quá hạn", "Bị hủy"
-                if (tab?.position == 1 || tab?.position == 2 || tab?.position == 3) {
+                // Hiện/ẩn date filter cho các tab cần lọc gồm: Hoàn tất, Quá hạn, Bị hủy, Tất cả
+                if (tab?.position == 1 || tab?.position == 2 || tab?.position == 3 || tab?.position == 4) {
                     binding.dateFilterLayout.visibility = View.VISIBLE
                 } else {
                     binding.dateFilterLayout.visibility = View.GONE
@@ -287,8 +287,14 @@ class MyOrdersFragment : Fragment() {
         builder.setTitleText("Chọn khoảng thời gian")
         builder.setCalendarConstraints(constraintsBuilder.build())
         
-        // Set theme để hiển thị compact hơn
-        builder.setTheme(com.example.foodapp.R.style.MaterialCalendarDialog)
+        // Responsive: dùng fullscreen trên màn hình hẹp, dialog trên màn hình đủ rộng
+        val screenWidthDp = resources.configuration.screenWidthDp
+        val themeRes = if (screenWidthDp < 360) {
+            com.example.foodapp.R.style.MaterialCalendarFullscreen
+        } else {
+            com.example.foodapp.R.style.MaterialCalendarDialog
+        }
+        builder.setTheme(themeRes)
         
         val picker = builder.build()
         
@@ -392,12 +398,40 @@ class MyOrdersFragment : Fragment() {
                     }
                 }
                 
+                // Áp dụng lọc ngày ở client nếu cần
+                val filtered = if (!startDate.isNullOrBlank() && !endDate.isNullOrBlank()) {
+                    try {
+                        val serverFormat = java.text.SimpleDateFormat("dd/MM/yyyy HH:mm", java.util.Locale.getDefault())
+                        val compareFormat = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault())
+                        serverFormat.timeZone = java.util.TimeZone.getTimeZone("Asia/Ho_Chi_Minh")
+                        compareFormat.timeZone = java.util.TimeZone.getTimeZone("Asia/Ho_Chi_Minh")
+
+                        val start = compareFormat.parse(startDate)
+                        val end = compareFormat.parse(endDate)
+
+                        allOrders.filter { order ->
+                            val source = order.ngay_nhan ?: order.ngay_tao
+                            if (source.isNullOrBlank()) return@filter false
+                            val date = try { serverFormat.parse(source) } catch (e: Exception) { null }
+                            if (date == null || start == null || end == null) return@filter false
+                            val dateOnly = compareFormat.format(date)
+                            val d = compareFormat.parse(dateOnly)
+                            d != null && !d.before(start) && !d.after(end)
+                        }
+                    } catch (e: Exception) {
+                        android.util.Log.w("MyOrdersFragment", "Local date filter (fallback) failed: ${e.message}")
+                        allOrders
+                    }
+                } else {
+                    allOrders
+                }
+
                 // Cập nhật UI
-                orderAdapter.submitList(allOrders)
-                binding.emptyTextView.visibility = if (allOrders.isEmpty()) View.VISIBLE else View.GONE
-                binding.ordersRecyclerView.visibility = if (allOrders.isNotEmpty()) View.VISIBLE else View.GONE
+                orderAdapter.submitList(filtered)
+                binding.emptyTextView.visibility = if (filtered.isEmpty()) View.VISIBLE else View.GONE
+                binding.ordersRecyclerView.visibility = if (filtered.isNotEmpty()) View.VISIBLE else View.GONE
                 
-                android.util.Log.d("MyOrdersFragment", "Fallback loaded ${allOrders.size} orders total")
+                android.util.Log.d("MyOrdersFragment", "Fallback loaded ${filtered.size} orders after filter")
                 
             } catch (e: Exception) {
                 android.util.Log.e("MyOrdersFragment", "Fallback failed: ${e.message}")

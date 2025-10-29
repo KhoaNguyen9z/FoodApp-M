@@ -35,7 +35,36 @@ class MyOrdersViewModel(private val repository: ShipperRepository) : ViewModel()
                     orderList.forEach { order ->
                         android.util.Log.d("MyOrdersViewModel", "Order: ${order.ma_don_hang}, Status: ${order.trang_thai}, Created: ${order.ngay_tao}")
                     }
-                    _orders.value = orderList
+
+                    // Client-side safeguard: lọc theo ngày nếu server không áp dụng filter
+                    val filtered = if (!startDate.isNullOrBlank() && !endDate.isNullOrBlank()) {
+                        try {
+                            val serverFormat = java.text.SimpleDateFormat("dd/MM/yyyy HH:mm", java.util.Locale.getDefault())
+                            val compareFormat = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault())
+                            serverFormat.timeZone = java.util.TimeZone.getTimeZone("Asia/Ho_Chi_Minh")
+                            compareFormat.timeZone = java.util.TimeZone.getTimeZone("Asia/Ho_Chi_Minh")
+
+                            val start = compareFormat.parse(startDate)
+                            val end = compareFormat.parse(endDate)
+
+                            orderList.filter { order ->
+                                val source = order.ngay_nhan ?: order.ngay_tao
+                                if (source.isNullOrBlank()) return@filter false
+                                val date = try { serverFormat.parse(source) } catch (e: Exception) { null }
+                                if (date == null || start == null || end == null) return@filter false
+                                val dateOnly = compareFormat.format(date)
+                                val d = compareFormat.parse(dateOnly)
+                                d != null && !d.before(start) && !d.after(end)
+                            }
+                        } catch (e: Exception) {
+                            android.util.Log.w("MyOrdersViewModel", "Local date filter failed: ${e.message}")
+                            orderList
+                        }
+                    } else {
+                        orderList
+                    }
+
+                    _orders.value = filtered
                 }
                 result.onFailure { exception ->
                     android.util.Log.e("MyOrdersViewModel", "Error loading orders: ${exception.message}")
